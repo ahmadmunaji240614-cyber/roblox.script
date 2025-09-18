@@ -1,0 +1,91 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+_G.BigHeadScale = 5
+
+local function setHeadScale(char, s)
+    if not char then return end
+    local head = char:FindFirstChild("Head")
+    if not head then return end
+    local mesh = head:FindFirstChildWhichIsA("SpecialMesh") or head:FindFirstChildWhichIsA("Mesh")
+    if not mesh then
+        mesh = Instance.new("SpecialMesh")
+        mesh.MeshType = Enum.MeshType.Head
+        mesh.Scale = Vector3.new(1,1,1)
+        mesh.Parent = head
+    end
+    mesh.Scale = Vector3.new(s, s, s)
+end
+
+local function onChar(char)
+    task.wait(0.5)
+    setHeadScale(char, _G.BigHeadScale)
+end
+
+local function applyPlayer(plr)
+    if plr.Character then onChar(plr.Character) end
+    plr.CharacterAdded:Connect(onChar)
+end
+
+for _,p in pairs(Players:GetPlayers()) do
+    applyPlayer(p)
+end
+Players.PlayerAdded:Connect(applyPlayer)
+
+RunService.Heartbeat:Connect(function()
+    for _,p in pairs(Players:GetPlayers()) do
+        local c = p.Character
+        if c and c:FindFirstChild("Head") then
+            local mesh = c.Head:FindFirstChildWhichIsA("SpecialMesh") or c.Head:FindFirstChildWhichIsA("Mesh")
+            if mesh then
+                local s = _G.BigHeadScale
+                if mesh.Scale.X ~= s then
+                    mesh.Scale = Vector3.new(s,s,s)
+                end
+            end
+        end
+    end
+end)
+
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local Frame = Instance.new("Frame", ScreenGui)
+local UICorner = Instance.new("UICorner", Frame)
+local Title = Instance.new("TextLabel", Frame)
+local SliderBack = Instance.new("Frame", Frame)
+local SliderFill = Instance.new("Frame", SliderBack)
+local UICorner2 = Instance.new("UICorner", SliderBack)
+local UICorner3 = Instance.new("UICorner", SliderFill)
+local Input = Instance.new("TextButton", SliderFill)
+
+Frame.Size = UDim2.new(0, 250, 0, 100)
+Frame.Position = UDim2.new(0.5, -125, 0.8, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+UICorner.CornerRadius = UDim.new(0,12)
+Title.Size = UDim2.new(1,0,0,30)
+Title.Text = "Big Head Scale"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.BackgroundTransparency = 1
+SliderBack.Size = UDim2.new(0.9,0,0,10)
+SliderBack.Position = UDim2.new(0.05,0,0.5,0)
+SliderBack.BackgroundColor3 = Color3.fromRGB(50,50,50)
+UICorner2.CornerRadius = UDim.new(1,0)
+SliderFill.BackgroundColor3 = Color3.fromRGB(0,170,255)
+SliderFill.Size = UDim2.new(0.5,0,1,0)
+UICorner3.CornerRadius = UDim.new(1,0)
+Input.Size = UDim2.new(1,0,1,0)
+Input.BackgroundTransparency = 1
+Input.Text = ""
+
+local UIS = game:GetService("UserInputService")
+local dragging = false
+Input.MouseButton1Down:Connect(function() dragging = true end)
+UIS.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+UIS.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local pos = math.clamp((input.Position.X - SliderBack.AbsolutePosition.X) / SliderBack.AbsoluteSize.X,0,1)
+        SliderFill.Size = UDim2.new(pos,0,1,0)
+        local scaleValue = math.floor(pos*10)
+        if scaleValue < 1 then scaleValue = 1 end
+        _G.BigHeadScale = scaleValue
+        Title.Text = "Big Head Scale: "..scaleValue
+    end
+end)
