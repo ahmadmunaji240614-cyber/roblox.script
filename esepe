@@ -1,0 +1,152 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local OpenButton = Instance.new("TextButton")
+OpenButton.Parent = ScreenGui
+OpenButton.Size = UDim2.new(0,120,0,40)
+OpenButton.Position = UDim2.new(0,20,0,20)
+OpenButton.Text = "MENU"
+OpenButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
+OpenButton.TextColor3 = Color3.new(1,1,1)
+
+local Menu = Instance.new("Frame")
+Menu.Parent = ScreenGui
+Menu.Size = UDim2.new(0,230,0,320)
+Menu.Position = UDim2.new(0,20,0,70)
+Menu.BackgroundColor3 = Color3.fromRGB(25,25,25)
+Menu.Visible = false
+Menu.Active = true
+Menu.Draggable = true
+
+local function CreateButton(text, y)
+	local b = Instance.new("TextButton")
+	b.Parent = Menu
+	b.Size = UDim2.new(1,-20,0,40)
+	b.Position = UDim2.new(0,10,0,y)
+	b.BackgroundColor3 = Color3.fromRGB(50,50,50)
+	b.TextColor3 = Color3.new(1,1,1)
+	b.Text = text
+	return b
+end
+
+local ToggleHealth = CreateButton("Health : OFF",20)
+local ToggleName = CreateButton("Name : OFF",70)
+local ToggleHighlight = CreateButton("Highlight : OFF",120)
+local ChangeHealthColor = CreateButton("Change Health Color",170)
+local ChangeHighlightColor = CreateButton("Change Highlight Color",220)
+
+local MenuOpen = false
+OpenButton.MouseButton1Click:Connect(function()
+	MenuOpen = not MenuOpen
+	Menu.Visible = MenuOpen
+end)
+
+local HealthOn = false
+local NameOn = false
+local HighlightOn = false
+
+local HealthColor = nil
+local HighlightColor = Color3.fromRGB(255,0,0)
+
+local function Toggle(btn, state)
+	state = not state
+	btn.Text = btn.Text:split(":")[1] .. (state and " : ON" or " : OFF")
+	return state
+end
+
+ToggleHealth.MouseButton1Click:Connect(function()
+	HealthOn = Toggle(ToggleHealth, HealthOn)
+end)
+
+ToggleName.MouseButton1Click:Connect(function()
+	NameOn = Toggle(ToggleName, NameOn)
+end)
+
+ToggleHighlight.MouseButton1Click:Connect(function()
+	HighlightOn = Toggle(ToggleHighlight, HighlightOn)
+end)
+
+local function RandomColor()
+	return Color3.fromRGB(math.random(0,255),math.random(0,255),math.random(0,255))
+end
+
+ChangeHealthColor.MouseButton1Click:Connect(function()
+	HealthColor = RandomColor()
+end)
+
+ChangeHighlightColor.MouseButton1Click:Connect(function()
+	HighlightColor = RandomColor()
+end)
+
+local function SetupCharacter(player)
+	if player == LocalPlayer then return end
+
+	player.CharacterAdded:Connect(function(char)
+		local humanoid = char:WaitForChild("Humanoid")
+		local head = char:WaitForChild("Head")
+
+		local highlight = Instance.new("Highlight")
+		highlight.Parent = char
+
+		local billboard = Instance.new("BillboardGui")
+		billboard.Size = UDim2.new(4,0,1,0)
+		billboard.StudsOffset = Vector3.new(0,3,0)
+		billboard.AlwaysOnTop = true
+		billboard.Parent = head
+
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Size = UDim2.new(1,0,0.5,0)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.TextColor3 = Color3.new(1,1,1)
+		nameLabel.TextStrokeTransparency = 0
+		nameLabel.Text = player.Name
+		nameLabel.Parent = billboard
+
+		local bg = Instance.new("Frame")
+		bg.Size = UDim2.new(1,0,0.4,0)
+		bg.Position = UDim2.new(0,0,0.6,0)
+		bg.BackgroundColor3 = Color3.fromRGB(50,50,50)
+		bg.BorderSizePixel = 0
+		bg.Parent = billboard
+
+		local bar = Instance.new("Frame")
+		bar.Size = UDim2.new(1,0,1,0)
+		bar.BorderSizePixel = 0
+		bar.Parent = bg
+
+		humanoid.HealthChanged:Connect(function()
+			local percent = humanoid.Health / humanoid.MaxHealth
+			bar.Size = UDim2.new(percent,0,1,0)
+
+			if HealthColor then
+				bar.BackgroundColor3 = HealthColor
+			else
+				bar.BackgroundColor3 = Color3.fromRGB(
+					255 - (255 * percent),
+					255 * percent,
+					0
+				)
+			end
+		end)
+
+		RunService.RenderStepped:Connect(function()
+			billboard.Enabled = HealthOn or NameOn
+			nameLabel.Visible = NameOn
+			bg.Visible = HealthOn
+
+			highlight.Enabled = HighlightOn
+			highlight.FillColor = HighlightColor
+			highlight.OutlineColor = HighlightColor
+		end)
+	end)
+end
+
+for _, player in pairs(Players:GetPlayers()) do
+	SetupCharacter(player)
+end
+
+Players.PlayerAdded:Connect(SetupCharacter)
