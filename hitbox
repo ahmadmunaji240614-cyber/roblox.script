@@ -1,0 +1,173 @@
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+-- Local setting
+local player = game.Players.LocalPlayer
+local servicePlayer = game:GetService("Players")
+local userInputService = game:GetService("UserInputService")
+local runService = game:GetService("RunService")
+
+local bodyParts = { "Head" }
+local hitboxSizes = {}
+local originalSizes = {} 
+
+for _, partName in ipairs(bodyParts) do
+    hitboxSizes[partName] = 0
+end
+
+local function ResizeBodyPart(targetPlayer, partName, size)
+    if targetPlayer == player then return end  
+
+    local character = targetPlayer.Character
+    if not character then return end
+
+    local part = character:FindFirstChild(partName)
+    if not part then return end
+
+    if not originalSizes[part] then
+        originalSizes[part] = part.Size
+    end
+
+    local minSize = 0.1 
+    local newSize = math.max(size, minSize)
+
+    part.Size = Vector3.new(newSize, newSize, newSize)
+    part.Transparency = 0.5
+    part.CanCollide = false
+    part.Massless = true
+    part.Anchored = false
+
+    if size <= 0 then
+        part.Size = originalSizes[part]
+    end
+end
+
+local function updateOtherPlayers()
+    for _, otherPlayer in ipairs(servicePlayer:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            for partName, size in pairs(hitboxSizes) do
+                ResizeBodyPart(otherPlayer, partName, size)
+            end
+        end
+    end
+end
+
+runService.Heartbeat:Connect(updateOtherPlayers)
+
+local function createHitboxSizeGui()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.ResetOnSpawn = false")
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0.8, 0, 0.3, 0)  -- Mobile-friendly scale
+    frame.Position = UDim2.new(0.1, 0, 0.35, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.Active = true
+    frame.Draggable = true
+    frame.Parent = screenGui
+
+    -- UI Constraints for mobile
+    local aspectRatio = Instance.new("UIAspectRatioConstraint")
+    aspectRatio.AspectRatio = 3
+    aspectRatio.Parent = frame
+
+    local sizeConstraint = Instance.new("UISizeConstraint")
+    sizeConstraint.MinSize = Vector2.new(200, 100)
+    sizeConstraint.MaxSize = Vector2.new(400, 200)
+    sizeConstraint.Parent = frame
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, 0, 0, 20)
+    titleLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    titleLabel.Text = "Hitbox Size Adjuster"
+    titleLabel.TextColor3 = Color3.new(1, 1, 1)
+    titleLabel.Parent = frame
+
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, 0, 1, -30)
+    scrollFrame.Position = UDim2.new(0, 0, 0, 30)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #bodyParts * 40)
+    scrollFrame.Parent = frame
+
+    for i, partName in ipairs(bodyParts) do
+        local partFrame = Instance.new("Frame")
+        partFrame.Size = UDim2.new(1, -10, 0, 30)
+        partFrame.Position = UDim2.new(0, 5, 0, (i - 1) * 40)
+        partFrame.BackgroundTransparency = 1
+        partFrame.Parent = scrollFrame
+
+        local partLabel = Instance.new("TextLabel")
+        partLabel.Size = UDim2.new(0.4, 0, 1, 0)
+        partLabel.BackgroundTransparency = 1
+        partLabel.Text = partName
+        partLabel.TextColor3 = Color3.new(1, 1, 1)
+        partLabel.Parent = partFrame
+
+        local sliderBackground = Instance.new("Frame")
+        sliderBackground.Size = UDim2.new(0.5, 0, 0, 8)
+        sliderBackground.Position = UDim2.new(0.4, 0, 0.5, -4)
+        sliderBackground.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        sliderBackground.Parent = partFrame
+
+        local sliderFill = Instance.new("Frame")
+        sliderFill.Size = UDim2.new(0, 0, 1, 0)
+        sliderFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+        sliderFill.Parent = sliderBackground
+
+        local sliderButton = Instance.new("TextButton")
+        sliderButton.Size = UDim2.new(0.1, 0, 1.5, 0)  -- Larger for touch
+        sliderButton.Position = UDim2.new(0, -10, 0.5, -10)
+        sliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        sliderButton.Text = ""
+        sliderButton.AutoButtonColor = false
+        sliderButton.Parent = sliderBackground
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(1, 0)
+        corner.Parent = sliderButton
+
+        -- Mobile and mouse support
+        sliderButton.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                local connection
+                connection = userInputService.InputChanged:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                        local relativeX = math.clamp(input.Position.X - sliderBackground.AbsolutePosition.X, 0, sliderBackground.AbsoluteSize.X)
+                        local newSize = (relativeX / sliderBackground.AbsoluteSize.X) * 50
+                        hitboxSizes[partName] = newSize
+
+                        sliderButton.Position = UDim2.new(relativeX / sliderBackground.AbsoluteSize.X, -10, 0.5, -10)
+                        sliderFill.Size = UDim2.new(relativeX / sliderBackground.AbsoluteSize.X, 0, 1, 0)
+                    end
+                end)
+
+                userInputService.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        connection:Disconnect()
+                    end
+                end)
+            end
+        end)
+    end
+end
+
+createHitboxSizeGui()
+
+servicePlayer.PlayerAdded:Connect(function(newPlayer)
+    if newPlayer ~= player then
+        newPlayer.CharacterAdded:Connect(function()
+            for partName, size in pairs(hitboxSizes) do
+                ResizeBodyPart(newPlayer, partName, size)
+            end
+        end)
+    end
+end)
+
+for _, otherPlayer in ipairs(servicePlayer:GetPlayers()) do
+    if otherPlayer ~= player and otherPlayer.Character then
+        for partName, size in pairs(hitboxSizes) do
+            ResizeBodyPart(otherPlayer, partName, size)
+        end
+    end
+end
